@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 	"os"
 	"reflect"
 	"sort"
@@ -119,12 +119,10 @@ func getToken(d ast.Decl) token.Token {
 
 func run() error {
 	var (
-		config  Config
-		inPlace bool
-		help    bool
+		config Config
+		help   bool
 	)
 
-	flag.BoolVar(&inPlace, "w", false, "write result to source file instead of stdout")
 	flag.BoolVar(&help, "h", false, "help")
 	flag.BoolVar(&config.SortAlphabetically, "a", false, "sort alphabetically")
 	flag.Parse()
@@ -134,26 +132,14 @@ func run() error {
 		return nil
 	}
 
-	if flag.NArg() != 1 {
-		return errors.New("exactly one argument required")
-	}
-
-	filePath := flag.Arg(0)
-
-	contents, err := os.ReadFile(filePath)
+	contents, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+		return fmt.Errorf("failed to read from stdin: %w", err)
 	}
 
 	buf, err := sortFile(contents, config)
 
-	if inPlace {
-		if err := os.WriteFile(filePath, buf.Bytes(), 0666); err != nil {
-			return fmt.Errorf("failed to write to file: %w", err)
-		}
-	} else {
-		fmt.Println(buf.String())
-	}
+	fmt.Println(buf.String())
 
 	return nil
 }

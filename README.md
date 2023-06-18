@@ -27,13 +27,7 @@ go install github.com/td0m/go-order@latest
 To sort the file and print the output to stdout:
 
 ```bash
-go-order main.go
-```
-
-To sort and write the results back to the file:
-
-```bash
-go-order -w main.go
+go-order -a < main.go
 ```
 
 For help:
