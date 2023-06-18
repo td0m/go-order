@@ -96,7 +96,7 @@ func run() error {
 		help    bool
 	)
 
-	flag.BoolVar(&inPlace, "f", false, "fix")
+	flag.BoolVar(&inPlace, "w", false, "write result to source file instead of stdout")
 	flag.BoolVar(&help, "h", false, "help")
 	flag.BoolVar(&config.SortAlphabetically, "a", false, "sort alphabetically")
 	flag.Parse()
@@ -207,9 +207,8 @@ func toFileBytes(tree *ast.File, contents []byte, comments map[ast.Decl][]byte) 
 		w.Write(contents[decl.Pos()-1 : decl.End()-1])
 
 		// leading new lines
-		w.WriteByte('\n')
 		if i < len(tree.Decls)-1 {
-			w.WriteByte('\n')
+			w.WriteString("\n\n")
 		}
 	}
 

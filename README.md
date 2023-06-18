@@ -33,7 +33,7 @@ go-order main.go
 To sort and write the results back to the file:
 
 ```bash
-go-order -f main.go
+go-order -w main.go
 ```
 
 For help:
@@ -41,3 +41,9 @@ For help:
 ```bash
 go-order -h
 ```
+
+## Integration
+
+### VsCode
+
+Use the [Run on Save](https://marketplace.visualstudio.com/items?itemName=emeraldwalk.RunOnSave) extension.
