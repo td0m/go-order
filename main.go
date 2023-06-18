@@ -11,6 +11,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strings"
 )
 
 var orderMap = map[token.Token]int{
@@ -139,6 +140,19 @@ func assignCommentsToDecl(tree *ast.File, content []byte) map[ast.Decl][]byte {
 			continue
 		}
 
+		// skip comments within declarations
+		isRootComment := true
+		for _, d := range tree.Decls {
+			if d.Pos() <= start && end <= d.End() {
+				isRootComment = false
+				break
+			}
+		}
+
+		if !isRootComment {
+			continue
+		}
+
 		var found bool
 		for _, d := range tree.Decls {
 			if d.Pos() > c.End() {
@@ -185,7 +199,7 @@ func sortAST(t *ast.File, conf Config) error {
 					} else if bName == "main" {
 						return true
 					}
-					return aName < bName
+					return strings.Compare(aName, bName) < 0
 				}
 			}
 		}

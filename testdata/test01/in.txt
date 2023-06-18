@@ -20,6 +20,7 @@ func run() error {
 
 // initializes all configs
 func init() {
+	// init db
 }
 
 // do stuffs again
