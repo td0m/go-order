@@ -140,17 +140,45 @@ func sortAST(t *ast.File, conf Config) error {
 		}
 
 		if conf.SortAlphabetically {
+			// two consecutive functions are sorted alphabetically by their name
 			if a, ok := a.(*ast.FuncDecl); ok {
-				// two consecutive functions are sorted alphabetically by their name
 				if b, ok := b.(*ast.FuncDecl); ok {
-					aName, bName := a.Name.Name, b.Name.Name
+					a, b := funcName(a), funcName(b)
 					// main function goes last
-					if aName == "main" {
+					if a.recv == "" && a.name == "main" {
 						return false
-					} else if bName == "main" {
+					} else if b.recv == "" && b.name == "main" {
 						return true
 					}
-					return strings.Compare(aName, bName) < 0
+
+					// functions go after methods
+					if a.recv == "" && b.recv != "" {
+						return false
+					}
+					if b.recv == "" && a.recv != "" {
+						return true
+					}
+
+					// sort methods based on the receiver
+					if a.recv != b.recv {
+						return strings.Compare(a.recv, b.recv) < 0
+					}
+
+					// sort functions and methods alphabetically
+					return strings.Compare(a.name, b.name) < 0
+				}
+			}
+			// two consecutive general declarations
+			if a, ok := a.(*ast.GenDecl); ok {
+				if b, ok := b.(*ast.GenDecl); ok {
+					// two individual type declarations!
+					if a.Tok == token.TYPE && b.Tok == token.TYPE && len(a.Specs) == 1 && len(b.Specs) == 1 {
+						getName := func(s ast.Spec) string {
+							return s.(*ast.TypeSpec).Name.Name
+						}
+						a, b := getName(a.Specs[0]), getName(b.Specs[0])
+						return strings.Compare(a, b) < 0
+					}
 				}
 			}
 		}
@@ -159,6 +187,34 @@ func sortAST(t *ast.File, conf Config) error {
 		return false
 	})
 	return nil
+}
+
+type funcOrMethod struct {
+	name string
+	recv string
+}
+
+// funcName returns the function name in the form of "<receiver type> <function name>"
+// e.g. funcName("func (f Foo) String() {}") = {recv: "Foo", name: "String"}
+// a function without a receiver
+func funcName(f *ast.FuncDecl) funcOrMethod {
+	name := f.Name.Name
+	if f.Recv == nil || len(f.Recv.List) == 0 {
+		return funcOrMethod{name: name}
+	}
+
+	var recv string
+	recvType := f.Recv.List[0].Type
+	switch recvType := recvType.(type) {
+	case *ast.StarExpr:
+		recv = recvType.X.(*ast.Ident).Name
+	case *ast.Ident:
+		recv = recvType.Name
+	default:
+		panic("invalid receiver type: " + reflect.TypeOf(recvType).String())
+	}
+
+	return funcOrMethod{recv: recv, name: name}
 }
 
 // last comments

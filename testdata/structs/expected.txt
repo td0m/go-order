@@ -1,0 +1,24 @@
+package main
+
+type Bar struct {
+}
+
+type Foo struct {
+}
+
+func (b *Bar) String() string {
+	return "bar"
+}
+
+func (b Bar) x() {}
+
+func (f *Foo) String() string {
+	return "foo"
+}
+
+func (f Foo) x() {}
+
+func B(){}
+
+func main() {
+}
