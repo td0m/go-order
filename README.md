@@ -42,8 +42,8 @@ For help:
 go-order -h
 ```
 
-## Integration
+## Roadmap
 
-### VsCode
-
-Use the [Run on Save](https://marketplace.visualstudio.com/items?itemName=emeraldwalk.RunOnSave) extension.
+The following features are still in consideration:
+ - (in progress)sorting const, var, and type blocks
+ - sorting struct fields
