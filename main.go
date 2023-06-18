@@ -156,7 +156,7 @@ func sortAST(t *ast.File, conf Config) error {
 		}
 
 		// keep in the same order
-		return true
+		return false
 	})
 	return nil
 }
