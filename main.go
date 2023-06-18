@@ -26,6 +26,11 @@ type Config struct {
 	SortAlphabetically bool
 }
 
+type funcOrMethod struct {
+	name string
+	recv string
+}
+
 func assignCommentsToDecl(tree *ast.File, content []byte) map[ast.Decl][]byte {
 	comments := map[ast.Decl][]byte{
 		nil: {'\n'},
@@ -75,6 +80,29 @@ func assignCommentsToDecl(tree *ast.File, content []byte) map[ast.Decl][]byte {
 	}
 
 	return comments
+}
+
+// funcName returns the function name in the form of "<receiver type> <function name>"
+// e.g. funcName("func (f Foo) String() {}") = {recv: "Foo", name: "String"}
+// a function without a receiver
+func funcName(f *ast.FuncDecl) funcOrMethod {
+	name := f.Name.Name
+	if f.Recv == nil || len(f.Recv.List) == 0 {
+		return funcOrMethod{name: name}
+	}
+
+	var recv string
+	recvType := f.Recv.List[0].Type
+	switch recvType := recvType.(type) {
+	case *ast.StarExpr:
+		recv = recvType.X.(*ast.Ident).Name
+	case *ast.Ident:
+		recv = recvType.Name
+	default:
+		panic("invalid receiver type: " + reflect.TypeOf(recvType).String())
+	}
+
+	return funcOrMethod{recv: recv, name: name}
 }
 
 func getToken(d ast.Decl) token.Token {
@@ -187,34 +215,6 @@ func sortAST(t *ast.File, conf Config) error {
 		return false
 	})
 	return nil
-}
-
-type funcOrMethod struct {
-	name string
-	recv string
-}
-
-// funcName returns the function name in the form of "<receiver type> <function name>"
-// e.g. funcName("func (f Foo) String() {}") = {recv: "Foo", name: "String"}
-// a function without a receiver
-func funcName(f *ast.FuncDecl) funcOrMethod {
-	name := f.Name.Name
-	if f.Recv == nil || len(f.Recv.List) == 0 {
-		return funcOrMethod{name: name}
-	}
-
-	var recv string
-	recvType := f.Recv.List[0].Type
-	switch recvType := recvType.(type) {
-	case *ast.StarExpr:
-		recv = recvType.X.(*ast.Ident).Name
-	case *ast.Ident:
-		recv = recvType.Name
-	default:
-		panic("invalid receiver type: " + reflect.TypeOf(recvType).String())
-	}
-
-	return funcOrMethod{recv: recv, name: name}
 }
 
 // last comments
