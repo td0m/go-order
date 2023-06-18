@@ -1,0 +1,26 @@
+// COPYRIGHT DOM
+// GPL LICENSE
+package main
+
+// om
+import "time"
+
+func zzz() {
+	time.Sleep(time.Second)
+}
+
+func main() {
+}
+
+func run() error {
+	return nil
+}
+
+// do stuff
+
+// initializes all configs
+func init() {
+}
+
+// do stuffs again
+const n = 0
