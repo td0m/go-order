@@ -37,6 +37,11 @@ func run() error {
 	flag.BoolVar(&config.SortAlphabetically, "a", false, "sort alphabetically")
 	flag.Parse()
 
+	if help {
+		flag.Usage()
+		return nil
+	}
+
 	if flag.NArg() != 1 {
 		return errors.New("exactly one argument required")
 	}
