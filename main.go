@@ -13,16 +13,16 @@ import (
 	"sort"
 )
 
-type Config struct {
-	SortAlphabetically bool
-}
-
 var orderMap = map[token.Token]int{
 	token.IMPORT: 0,
 	token.CONST:  1,
 	token.VAR:    2,
 	token.TYPE:   3,
 	token.FUNC:   4,
+}
+
+type Config struct {
+	SortAlphabetically bool
 }
 
 func run() error {
@@ -61,6 +61,7 @@ func run() error {
 	return nil
 }
 
+// last comments
 func sortFile(contents []byte, config Config) (*bytes.Buffer, error) {
 	ast, err := parser.ParseFile(
 		token.NewFileSet(),
@@ -84,6 +85,7 @@ func sortFile(contents []byte, config Config) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
+// skip doc comments
 func toFileBytes(tree *ast.File, contents []byte, comments map[ast.Decl][]byte) *bytes.Buffer {
 	w := &bytes.Buffer{}
 
@@ -114,6 +116,11 @@ func toFileBytes(tree *ast.File, contents []byte, comments map[ast.Decl][]byte) 
 	return w
 }
 
+// sort types first
+// two consecutive functions are sorted alphabetically by their name
+// main function goes last
+// keep in the same order
+// last comments
 func assignCommentsToDecl(tree *ast.File, content []byte) map[ast.Decl][]byte {
 	comments := map[ast.Decl][]byte{
 		nil: {'\n'},
@@ -152,6 +159,7 @@ func assignCommentsToDecl(tree *ast.File, content []byte) map[ast.Decl][]byte {
 	return comments
 }
 
+// skip doc comments
 func sortAST(t *ast.File, conf Config) error {
 	sort.Slice(t.Decls, func(i, j int) bool {
 		a, b := t.Decls[i], t.Decls[j]
