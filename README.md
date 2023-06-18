@@ -9,9 +9,9 @@ Most of us who use Go like to structure their files in the following format:
  - `type ...`
  - `func ...`
 
-This is exactly what `go-order` does! This idea was originally implemented by me
+This is exactly what `go-order` does! I originally implemented this idea
 in [go-order.nvim](https://github.com/td0m/go-order.nvim), a Lua NeoVim
-extension that uses Treesitter. I wanted this to be more widely to allow others
+extension that uses Treesitter. I wanted this to be more widely available to allow others
 who do not use Neovim to benefit from this, hence the rewrite.
 
 ## Installation
