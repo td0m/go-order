@@ -26,6 +26,69 @@ type Config struct {
 	SortAlphabetically bool
 }
 
+func assignCommentsToDecl(tree *ast.File, content []byte) map[ast.Decl][]byte {
+	comments := map[ast.Decl][]byte{
+		nil: {'\n'},
+	}
+
+	for _, c := range tree.Comments {
+		start, end := c.Pos(), c.End()
+
+		// skip doc comments
+		if start < tree.Package {
+			continue
+		}
+
+		// skip comments within declarations
+		isRootComment := true
+		for _, d := range tree.Decls {
+			if d.Pos() <= start && end <= d.End() {
+				isRootComment = false
+				break
+			}
+		}
+
+		if !isRootComment {
+			continue
+		}
+
+		var found bool
+		for _, d := range tree.Decls {
+			if d.Pos() > c.End() {
+				comment := content[start-1 : end]
+				for i := int(end); i < len(content); i++ {
+					if content[i] == '\n' {
+						comment = append(comment, '\n')
+					} else {
+						break
+					}
+				}
+				comments[d] = append(comments[d], comment...)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			comments[nil] = append(comments[nil], content[start-1:]...)
+		}
+	}
+
+	return comments
+}
+
+func getToken(d ast.Decl) token.Token {
+	switch d := d.(type) {
+	case *ast.FuncDecl:
+		return token.FUNC
+	case *ast.GenDecl:
+		return d.Tok
+	default:
+		fmt.Printf("bad declaration: %v\n", reflect.TypeOf(d))
+		panic("unimpl for")
+	}
+}
+
 func run() error {
 	var (
 		config  Config
@@ -64,6 +127,38 @@ func run() error {
 		fmt.Println(buf.String())
 	}
 
+	return nil
+}
+
+// skip doc comments
+func sortAST(t *ast.File, conf Config) error {
+	sort.Slice(t.Decls, func(i, j int) bool {
+		a, b := t.Decls[i], t.Decls[j]
+		// sort types first
+		aType, bType := getToken(a), getToken(b)
+		if aType != bType {
+			return orderMap[aType] < orderMap[bType]
+		}
+
+		if conf.SortAlphabetically {
+			if a, ok := a.(*ast.FuncDecl); ok {
+				// two consecutive functions are sorted alphabetically by their name
+				if b, ok := b.(*ast.FuncDecl); ok {
+					aName, bName := a.Name.Name, b.Name.Name
+					// main function goes last
+					if aName == "main" {
+						return false
+					} else if bName == "main" {
+						return true
+					}
+					return strings.Compare(aName, bName) < 0
+				}
+			}
+		}
+
+		// keep in the same order
+		return true
+	})
 	return nil
 }
 
@@ -120,106 +215,6 @@ func toFileBytes(tree *ast.File, contents []byte, comments map[ast.Decl][]byte) 
 		w.Write(comments)
 	}
 	return w
-}
-
-// sort types first
-// two consecutive functions are sorted alphabetically by their name
-// main function goes last
-// keep in the same order
-// last comments
-func assignCommentsToDecl(tree *ast.File, content []byte) map[ast.Decl][]byte {
-	comments := map[ast.Decl][]byte{
-		nil: {'\n'},
-	}
-
-	for _, c := range tree.Comments {
-		start, end := c.Pos(), c.End()
-
-		// skip doc comments
-		if start < tree.Package {
-			continue
-		}
-
-		// skip comments within declarations
-		isRootComment := true
-		for _, d := range tree.Decls {
-			if d.Pos() <= start && end <= d.End() {
-				isRootComment = false
-				break
-			}
-		}
-
-		if !isRootComment {
-			continue
-		}
-
-		var found bool
-		for _, d := range tree.Decls {
-			if d.Pos() > c.End() {
-				comment := content[start-1 : end]
-				for i := int(end); i < len(content); i++ {
-					if content[i] == '\n' {
-						comment = append(comment, '\n')
-					} else {
-						break
-					}
-				}
-				comments[d] = append(comments[d], comment...)
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			comments[nil] = append(comments[nil], content[start-1:]...)
-		}
-	}
-
-	return comments
-}
-
-// skip doc comments
-func sortAST(t *ast.File, conf Config) error {
-	sort.Slice(t.Decls, func(i, j int) bool {
-		a, b := t.Decls[i], t.Decls[j]
-		// sort types first
-		aType, bType := getToken(a), getToken(b)
-		if aType != bType {
-			return orderMap[aType] < orderMap[bType]
-		}
-
-		if conf.SortAlphabetically {
-			if a, ok := a.(*ast.FuncDecl); ok {
-				// two consecutive functions are sorted alphabetically by their name
-				if b, ok := b.(*ast.FuncDecl); ok {
-					aName, bName := a.Name.Name, b.Name.Name
-					// main function goes last
-					if aName == "main" {
-						return false
-					} else if bName == "main" {
-						return true
-					}
-					return strings.Compare(aName, bName) < 0
-				}
-			}
-		}
-
-		// keep in the same order
-		return true
-	})
-	return nil
-}
-
-func getToken(d ast.Decl) token.Token {
-	switch d := d.(type) {
-	case *ast.FuncDecl:
-		return token.FUNC
-	case *ast.GenDecl:
-		return d.Tok
-	default:
-		fmt.Printf("bad declaration: %v\n", reflect.TypeOf(d))
-		panic("unimpl for")
-	}
 }
 
 func main() {
