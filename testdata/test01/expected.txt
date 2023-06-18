@@ -12,6 +12,7 @@ const n = 0
 
 // initializes all configs
 func init() {
+	// init db
 }
 
 func run() error {

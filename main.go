@@ -130,7 +130,6 @@ func run() error {
 	return nil
 }
 
-// skip doc comments
 func sortAST(t *ast.File, conf Config) error {
 	sort.Slice(t.Decls, func(i, j int) bool {
 		a, b := t.Decls[i], t.Decls[j]
@@ -199,18 +198,21 @@ func toFileBytes(tree *ast.File, contents []byte, comments map[ast.Decl][]byte) 
 	fmt.Fprintf(w, "package %s\n\n", tree.Name)
 
 	for i, decl := range tree.Decls {
+		// trailing comments
 		if comments, ok := comments[decl]; ok {
 			w.Write(comments)
 		}
+
+		// declaration itself
 		w.Write(contents[decl.Pos()-1 : decl.End()-1])
+
+		// leading new lines
+		w.WriteByte('\n')
 		if i < len(tree.Decls)-1 {
-			w.WriteString("\n\n")
-		} else {
 			w.WriteByte('\n')
 		}
 	}
 
-	// last comments
 	if comments, ok := comments[nil]; ok {
 		w.Write(comments)
 	}
