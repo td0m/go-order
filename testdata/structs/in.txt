@@ -1,5 +1,12 @@
 package main
 
+var B string
+
+const D = "d"
+const C = "c"
+
+var A string
+
 type Foo struct {
 }
 

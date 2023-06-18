@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-var orderMap = map[token.Token]int{
+var order = map[token.Token]int{
 	token.IMPORT: 0,
 	token.CONST:  1,
 	token.VAR:    2,
@@ -150,7 +150,7 @@ func sortAST(t *ast.File, conf Config) error {
 		// sort types first
 		aType, bType := getToken(a), getToken(b)
 		if aType != bType {
-			return orderMap[aType] < orderMap[bType]
+			return order[aType] < order[bType]
 		}
 
 		if conf.SortAlphabetically {
@@ -185,13 +185,24 @@ func sortAST(t *ast.File, conf Config) error {
 			// two consecutive general declarations
 			if a, ok := a.(*ast.GenDecl); ok {
 				if b, ok := b.(*ast.GenDecl); ok {
-					// two individual type declarations!
-					if a.Tok == token.TYPE && b.Tok == token.TYPE && len(a.Specs) == 1 && len(b.Specs) == 1 {
-						getName := func(s ast.Spec) string {
-							return s.(*ast.TypeSpec).Name.Name
+					// two individual declarations!
+					if len(a.Specs) == 1 && len(b.Specs) == 1 {
+						var getName func(s ast.Spec) string
+						// type decl
+						if a.Tok == token.TYPE && b.Tok == token.TYPE {
+							getName = func(s ast.Spec) string {
+								return s.(*ast.TypeSpec).Name.Name
+							}
+						} else if a.Tok == token.VAR && b.Tok == token.VAR || a.Tok == token.CONST && b.Tok == token.CONST {
+							getName = func(s ast.Spec) string {
+								return s.(*ast.ValueSpec).Names[0].Name
+							}
 						}
-						a, b := getName(a.Specs[0]), getName(b.Specs[0])
-						return strings.Compare(a, b) < 0
+
+						if getName != nil {
+							a, b := getName(a.Specs[0]), getName(b.Specs[0])
+							return strings.Compare(a, b) < 0
+						}
 					}
 				}
 			}
