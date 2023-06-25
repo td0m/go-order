@@ -31,7 +31,7 @@ type funcOrMethod struct {
 	recv string
 }
 
-func assignCommentsToDecl(tree *ast.File, content []byte) map[ast.Decl][]byte {
+func assignRootCommentsToDecl(tree *ast.File, content []byte) map[ast.Decl][]byte {
 	comments := map[ast.Decl][]byte{
 		nil: {'\n'},
 	}
@@ -117,6 +117,24 @@ func getToken(d ast.Decl) token.Token {
 	}
 }
 
+func logError(err error) error {
+	// log to stderr
+	fmt.Fprintln(os.Stderr, err)
+
+	logFile := "go-order.log"
+
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file '%s': %w", logFile, err)
+	}
+
+	if _, err := f.WriteString(err.Error()); err != nil {
+		return fmt.Errorf("failed to write to file: %w", err)
+	}
+
+	return f.Close()
+}
+
 func run() error {
 	var (
 		config Config
@@ -138,6 +156,9 @@ func run() error {
 	}
 
 	buf, err := sortFile(contents, config)
+	if err != nil {
+		return fmt.Errorf("sorftFile failed: %w", err)
+	}
 
 	fmt.Println(buf.String())
 
@@ -226,7 +247,7 @@ func sortFile(contents []byte, config Config) (*bytes.Buffer, error) {
 		return nil, fmt.Errorf("failed paring file to AST: %w", err)
 	}
 
-	comments := assignCommentsToDecl(ast, contents)
+	comments := assignRootCommentsToDecl(ast, contents)
 
 	err = sortAST(ast, config)
 	if err != nil {
@@ -273,6 +294,6 @@ func toFileBytes(tree *ast.File, contents []byte, comments map[ast.Decl][]byte) 
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Println(err)
+		logError(err)
 	}
 }
