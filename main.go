@@ -120,19 +120,8 @@ func getToken(d ast.Decl) token.Token {
 func logError(err error) error {
 	// log to stderr
 	fmt.Fprintln(os.Stderr, err)
-
-	logFile := "go-order.log"
-
-	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open file '%s': %w", logFile, err)
-	}
-
-	if _, err := f.WriteString(err.Error()); err != nil {
-		return fmt.Errorf("failed to write to file: %w", err)
-	}
-
-	return f.Close()
+	os.Exit(1)
+	return nil
 }
 
 func run() error {
