@@ -39,5 +39,5 @@ go-order -h
 ## Roadmap
 
 The following features are still in consideration:
- - (in progress)sorting const, var, and type blocks
+ - sorting inside of const, var, and type blocks
  - sorting struct fields
