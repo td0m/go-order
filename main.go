@@ -1,7 +1,8 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -24,6 +25,7 @@ var order = map[token.Token]int{
 
 type Config struct {
 	SortAlphabetically bool
+	WriteToFile bool
 }
 
 type funcOrMethod struct {
@@ -132,24 +134,69 @@ func run() error {
 
 	flag.BoolVar(&help, "h", false, "help")
 	flag.BoolVar(&config.SortAlphabetically, "a", false, "sort alphabetically")
+	flag.BoolVar(&config.WriteToFile, "w", false, "write sorted output back to the file")
 	flag.Parse()
 
 	if help {
+		fmt.Println("Format:")
+		fmt.Println("  go-order [flags] filename")
+		fmt.Println("                   ^ optional, will use stdin if not provided")
 		flag.Usage()
 		return nil
 	}
 
-	contents, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return fmt.Errorf("failed to read from stdin: %w", err)
+	fname := flag.Arg(0)
+	if len(flag.Args()) > 1 {
+		return errors.New("too many arguments: only 0 or 1 supported")
 	}
 
-	buf, err := sortFile(contents, config)
-	if err != nil {
-		return fmt.Errorf("sorftFile failed: %w", err)
+	if config.WriteToFile && fname == "" {
+		return errors.New("-w flag requires you to privide the file name as the argument")
 	}
 
-	fmt.Println(buf.String())
+	// read from file if provided, otherwise use stdin
+	var contents []byte
+	if fname != "" {
+		f, err := os.Open(fname)
+		if err != nil {
+			return fmt.Errorf("failed to open file: %w", err)
+		}
+
+		contents, err = io.ReadAll(f)
+		if err != nil {
+			return fmt.Errorf("failed to read from file: %w", err)
+		}
+
+		f.Close()
+	} else {
+		var err error
+		contents, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to read from stdin: %w", err)
+		}
+	}
+
+	var f *os.File
+	// write to file if -w, else to stdout
+	var w io.Writer = os.Stdout
+	if config.WriteToFile {
+		var err error
+		f, err = os.OpenFile(fname, os.O_RDWR|os.O_TRUNC, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to open file for writing: %w", err)
+		}
+		w = f
+	}
+	bw := bufio.NewWriter(w)
+
+	err := sortFile(contents, bw, config)
+	if err != nil {
+		return fmt.Errorf("sortFile failed: %w", err)
+	}
+
+	if err := bw.Flush(); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
 
 	return nil
 }
@@ -225,7 +272,7 @@ func sortAST(t *ast.File, conf Config) error {
 }
 
 // last comments
-func sortFile(contents []byte, config Config) (*bytes.Buffer, error) {
+func sortFile(contents []byte, w io.Writer, config Config) (error) {
 	ast, err := parser.ParseFile(
 		token.NewFileSet(),
 		"", contents,
@@ -233,28 +280,26 @@ func sortFile(contents []byte, config Config) (*bytes.Buffer, error) {
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed paring file to AST: %w", err)
+		return fmt.Errorf("failed paring file to AST: %w", err)
 	}
 
 	comments := assignRootCommentsToDecl(ast, contents)
 
 	err = sortAST(ast, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sort AST: %w", err)
+		return fmt.Errorf("failed to sort AST: %w", err)
 	}
 
-	buf := toFileBytes(ast, contents, comments)
+	write(w, ast, contents, comments)
 
-	return buf, nil
+	return nil
 }
 
 // skip doc comments
-func toFileBytes(tree *ast.File, contents []byte, comments map[ast.Decl][]byte) *bytes.Buffer {
-	w := &bytes.Buffer{}
-
+func write(w io.Writer, tree *ast.File, contents []byte, comments map[ast.Decl][]byte) {
 	if tree.Doc != nil {
 		for _, each := range tree.Doc.List {
-			w.WriteString(each.Text + "\n")
+			w.Write([]byte(each.Text + "\n"))
 		}
 	}
 
@@ -271,14 +316,13 @@ func toFileBytes(tree *ast.File, contents []byte, comments map[ast.Decl][]byte) 
 
 		// leading new lines
 		if i < len(tree.Decls)-1 {
-			w.WriteString("\n\n")
+			w.Write([]byte("\n\n"))
 		}
 	}
 
 	if comments, ok := comments[nil]; ok {
 		w.Write(comments)
 	}
-	return w
 }
 
 func main() {

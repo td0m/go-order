@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"embed"
 	"os"
 	"path"
@@ -34,10 +35,11 @@ func TestSortAST(t *testing.T) {
 			expected, err := os.ReadFile(path.Join(p, "expected.txt"))
 			require.NoError(t, err)
 
-			actual, err := sortFile(in, config)
+			actual := &bytes.Buffer{}
+			err = sortFile(in, actual, config)
 			require.NoError(t, err)
 
-			require.Equal(t, string(expected), string(actual.Bytes()))
+			require.Equal(t, string(expected), actual.String())
 		})
 	}
 }
